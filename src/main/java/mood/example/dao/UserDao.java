@@ -1,5 +1,12 @@
 package mood.example.dao;
 
+import io.vertx.core.Future;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.json.JsonArray;
+import io.vertx.ext.asyncsql.AsyncSQLClient;
+import io.vertx.ext.asyncsql.PostgreSQLClient;
+import io.vertx.ext.sql.ResultSet;
+import io.vertx.ext.web.RoutingContext;
 import mood.annotation.*;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
@@ -15,24 +22,40 @@ public class UserDao {
     @Value
     Date date;
     @Value
-    HashMap config;
+    JsonObject config;
+    AsyncSQLClient postgreSQLClient;
     @Init
     public void init(){
-        client=JDBCClient.createShared(vertx,JsonObject.mapFrom(config),"myDataSource");
+        config.put("host", "localhost");
+        config.put("port", 5432);
+        config.put("username", "postgres");
+        config.put("password", "root");
+        config.put("database", "vertx");
+        config.put("charset", "UTF-8");
+        config.put("queryTimeout", 20000);
+        postgreSQLClient = PostgreSQLClient.createShared(vertx,config);
     }
     private static List<User> dataList=new LinkedList<>();
-    static{
-        dataList.add(new User(1,"王五","工程师","男"));
-        dataList.add(new User(2,"李四","数学家","男"));
-        dataList.add(new User(3,"张三","工程师","女"));
-        dataList.add(new User(4,"流浪","工程师","男"));
-        dataList.add(new User(5,"亚索","工程师","女"));
-        dataList.add(new User(6,"鱼人","工程师","男"));
-        dataList.add(new User(7,"盖伦","工程师","女"));
-        dataList.add(new User(8,"盲僧","工程师","男"));
-    }
-    public List<User> queryUserAll(){
-        return dataList;
+    public void queryUserAll(RoutingContext routingContext){
+        Future.<ResultSet>future(future -> {
+            postgreSQLClient.query("SELECT * FROM public.\"User\"",future);
+        }).compose(x->{
+            if(x.getResults().size()==0){
+                return Future.future(future -> {
+                    future.complete(new JsonObject().put("success","无数据"));
+                    future.succeeded();
+                });
+            }
+            return Future.future(future -> {
+                future.complete(new JsonObject().put("data",x.getResults()));
+                future.succeeded();
+            });
+        }).setHandler(z->{
+            if (z.succeeded()){
+                String str=((JsonObject) z.result()).getJsonArray("data").encode();
+                routingContext.response().putHeader("Content-Type", "application/json;charset=UTF-8").end(str,"UTF-8");
+            }
+        });
     }
     public User queryUserById(int id){
         return dataList.stream().filter(x->x.getId().equals(id)).findFirst().get();

@@ -26,12 +26,9 @@ public class UserService extends AbstractVerticle {
         router.route("/mood")
                 .handler(x->{
                     System.out.println(Thread.currentThread().getName() + ",  Request...url(/mood)");
-                    x.response().end(queryUserAll().toString());
+                    userDao.queryUserAll(x);
                 });
         this.vertx.createHttpServer().requestHandler(router::accept).listen(8089);
-    }
-    public List<User> queryUserAll(){
-        return userDao.queryUserAll();
     }
     public User queryUserById(int id){
         return userDao.queryUserById(id);
