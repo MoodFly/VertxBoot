@@ -308,6 +308,9 @@ public class Repository {
     public static Map<String, ControllerInfoMapping> getDeleteMappings() {
         return deleteMappings;
     }
+    public static  Object getVertxBean(String className) {
+        return vertxbeans.get(className);
+    }
     /**
      * 注册 Patch Mapping
      *

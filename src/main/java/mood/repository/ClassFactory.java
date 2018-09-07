@@ -3,6 +3,7 @@ package mood.repository;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import mood.annotation.Component;
+import mood.annotation.Router;
 
 import java.io.File;
 import java.io.IOException;
@@ -192,5 +193,28 @@ public final class ClassFactory {
         String className = clazz.getName();
         ComponentBean bean = new ComponentBean(clazz, clazz.getAnnotation(Component.class).singleton());
         Repository.registerBean(className, bean);
+        String url = null;
+        Router requestMapping = clazz.getAnnotation(Router.class);
+        if (requestMapping != null) {
+            url = requestMapping.value();
+        }
+        if (requestMapping!=null&&requestMapping.Method().equals("GET")){
+            ControllerInfoMapping controllerInfoMapping=new ControllerInfoMapping();
+            controllerInfoMapping.setUrl(url);
+            controllerInfoMapping.setClassName(className);
+            Repository.registerGetMapping(url,controllerInfoMapping);
+        }
+        Method[] methods = clazz.getMethods();
+        for (Method method : methods) {
+            RouterMappingRegisterStrategy strategy = null;
+            // 遍历所有method，生成ControllerMapping并注册。
+            if(method.getAnnotation(Router.class) != null&& method.getAnnotation(Router.class).Method().equals("GET")) {
+                strategy = new GetMappingRegisterStrategy();
+            }
+            if(strategy != null) {
+                RouterMappingRegisterContext mappingRegCtx = new RouterMappingRegisterContext(strategy);
+                mappingRegCtx.registerMapping(clazz, url, method);
+            }
+        }
     }
 }

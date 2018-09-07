@@ -18,7 +18,6 @@ import java.util.*;
 public class UserDao {
     @AutoWired
     Vertx vertx;
-    JDBCClient client;
     @Value
     Date date;
     @Value
@@ -57,34 +56,26 @@ public class UserDao {
             }
         });
     }
-    public User queryUserById(int id){
-        return dataList.stream().filter(x->x.getId().equals(id)).findFirst().get();
-    }
-    public int saveUser(User user){
-        Integer id=dataList.stream().sorted(Comparator.comparing(User::getId))
-                .map(x->x.getId()).findFirst().get();
-        user.setId(id+1);
-        dataList.add(user);
-        return user.getId();
-    }
-    public int updayeUser(User user){
-        dataList.forEach(x->{
-            if (x.getId()==user.getId()){
-                x.setName(user.getName());
-                x.setJob(user.getJob());
-                x.setSex(user.getSex());
+
+    public void queryUserByid(RoutingContext routingContext, String id) {
+        Future.<ResultSet>future(future -> {
+            postgreSQLClient.query("SELECT * FROM public.\"User\" where id="+id+"",future);
+        }).compose(x->{
+            if(x.getResults().size()==0){
+                return Future.future(future -> {
+                    future.complete(new JsonObject().put("success","无数据"));
+                    future.succeeded();
+                });
+            }
+            return Future.future(future -> {
+                future.complete(new JsonObject().put("data",x.getResults()));
+                future.succeeded();
+            });
+        }).setHandler(z->{
+            if (z.succeeded()){
+                String str=((JsonObject) z.result()).getJsonArray("data").encode();
+                routingContext.response().putHeader("Content-Type", "application/json;charset=UTF-8").end(str,"UTF-8");
             }
         });
-        return user.getId();
     }
-    public int deleteUser(User user){
-        Iterator<User> iterable=dataList.iterator();
-       while (iterable.hasNext()){
-           if (iterable.next().getId()==user.getId()){
-               iterable.remove();
-           }
-       }
-       return dataList.size();
-    }
-
 }

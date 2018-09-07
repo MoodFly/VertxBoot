@@ -1,5 +1,7 @@
 package mood.core;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.http.HttpServer;
 import mood.annotation.*;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Verticle;
@@ -31,7 +33,7 @@ public class CoreServer {
     /**
      * 监听端口号
      */
-    private int port = 0;
+    private static int port = 0;
 
     /**
      * Boss线程数
@@ -59,6 +61,9 @@ public class CoreServer {
 
     public void setPort(int port) {
         this.port = port;
+    }
+    public static int getPort() {
+        return port ;
     }
 
     public void setBossThreads(int bossThreads) {
